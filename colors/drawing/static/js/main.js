@@ -1,17 +1,20 @@
 console.log('Hello World from main.js!');
 let canvas = document.getElementById('board');
 let ctx = canvas.getContext('2d');
-canvas.width = 1000;
-canvas.height = 800;
+canvas.width = 500;
+canvas.height = 500;
 let color = getRandomColor();
-
+let drawing = false;
 let boxWidth = 50;
 let boxHeight = 50;
 const chatSocket = new WebSocket('ws://' + window.location.host + '/ws/draw/room/');
 
 let mouse = {x: -100, y: -100};
 
+let messagesQueue = [];
+
 function drawCircle(x, y, radius, color) {
+    console.log("drawing circle", x, y);
     ctx.beginPath();
     ctx.fillStyle = color;
     ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -19,19 +22,32 @@ function drawCircle(x, y, radius, color) {
     ctx.closePath();
 }
 
+canvas.addEventListener('mousedown', () => {
+    drawing = true;
+});
+
+canvas.addEventListener('mouseup', () => {
+    drawing = false;
+}   );
+
 //mouse is dragged
 canvas.addEventListener('mousemove', function(e) {
+    if (!drawing) return;
     mouse.x = e.clientX - canvas.getBoundingClientRect().left;
     mouse.y = e.clientY - canvas.getBoundingClientRect().top;
     // console.log(mouse);
-    chatSocket.send(JSON.stringify(mouse));
+    console.log("sending : " + JSON.stringify(mouse));
+    if (chatSocket.readyState === WebSocket.OPEN)
+        chatSocket.send(JSON.stringify(mouse));
+    else
+        console.log("socket not open");
     draw();
 });
 
-canvas.addEventListener('click', function(e) {
-    color = getRandomColor();
-    draw();
-});
+// canvas.addEventListener('click', function(e) {
+//     color = getRandomColor();
+//     draw();
+// });
 
 document.addEventListener('keydown', function(e) {
     console.log(e.code);
@@ -43,6 +59,12 @@ document.addEventListener('keydown', function(e) {
     {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         canvas.style.background = color;
+    }
+
+    //change color on space $
+
+    if (e.code === 'Space') {
+        color = getRandomColor();
     }
 });
 
@@ -65,8 +87,6 @@ function gameloop() {
 
 function draw() {
     drawCircle(mouse.x, mouse.y, 10, color);
-    // ctx.fillStyle = 'red';
-    // ctx.fillRect(mouse.x, mouse.y, 50, 50);
 }
 
 requestAnimationFrame(gameloop);
@@ -75,15 +95,21 @@ requestAnimationFrame(gameloop);
 //websockets
 
 chatSocket.onopen = function(e) {
-    console.log('open', e);
+    // console.log('open', e);
     //send data
+    console.log("connected to websocket");
     chatSocket.send(JSON.stringify(mouse));
 }
 chatSocket.onmessage = function(e) {
-    console.log(e.data);
+    console.log("got message", e.data);
+    let data = JSON.parse(e.data);
+    drawCircle(data.x, data.y, 10, color);
 };
 
 chatSocket.onclose = function(e) {
     console.error('Chat socket closed unexpectedly');
 }
 
+chatSocket.onerror = function(error) {
+    console.error('WebSocket Error: ', error);
+};
