@@ -1,50 +1,56 @@
 import json
 
-from channels.generic.websocket import WebsocketConsumer
+from channels.generic.websocket import AsyncWebsocketConsumer
 
 
-class DrawConsumer(WebsocketConsumer):
+class DrawConsumer(AsyncWebsocketConsumer):
     connection_number = 0
 
-    def connect(self):
+    async def connect(self):
         DrawConsumer.connection_number += 1
+        self.room_name = self.scope['url_route']['kwargs']['room_name']
         print("new connection", self.connection_number)
-        self.channel_layer.group_add(
-            "drawing",
+        await self.channel_layer.group_add(
+            self.room_name,
             self.channel_name
         )
-        self.accept()
+        await self.accept()
 
-    def disconnect(self, close_code):
-        self.channel_layer.group_discard(
-            "drawing",
+    async def disconnect(self, close_code):
+
+        await self.channel_layer.group_discard(
+            self.room_name,
             self.channel_name
         )
         print("disconnected", close_code)
 
-    def receive(self, text_data):
+    async def receive(self, text_data):
         #get json from string
+        print("recieving", text_data)
         data = json.loads(text_data)
+        print("received", data)
         x = data['x']
         y = data['y']
-        print("received", x, y)
-        self.channel_layer.group_send(
-            "drawing",
+        color = data['color']
+        await self.channel_layer.group_send(
+            self.room_name,
             {
                 "type": "drawing",
                 "x": x,
                 "y": y,
+                "color": color,
             }
         )
 
-    def drawing(self, event):
+    async def drawing(self, event):
         x = event["x"]
         y = event["y"]
+        color = event["color"]
         print("sending", x, y)
-        self.send(text_data=json.dumps({"x": x, "y": y}))
+        await self.send(text_data=json.dumps({"x": x, "y": y, "color": color}))
     
         # self.send(text_data=json.dumps({"x": x, "y": y}))
-        print("sending", x, y)
+        print("sending", x, y, color)
         # self.channel_layer.group_send(
         #     "drawing",
         #     {

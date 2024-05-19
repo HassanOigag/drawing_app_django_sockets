@@ -1,8 +1,8 @@
 console.log('Hello World from main.js!');
 let canvas = document.getElementById('board');
 let ctx = canvas.getContext('2d');
-canvas.width = 500;
-canvas.height = 500;
+canvas.width = 1000;
+canvas.height = 1000;
 let color = getRandomColor();
 let drawing = false;
 let boxWidth = 50;
@@ -36,9 +36,10 @@ canvas.addEventListener('mousemove', function(e) {
     mouse.x = e.clientX - canvas.getBoundingClientRect().left;
     mouse.y = e.clientY - canvas.getBoundingClientRect().top;
     // console.log(mouse);
-    console.log("sending : " + JSON.stringify(mouse));
+    let data = {x: mouse.x, y: mouse.y, "color": color};
+    console.log("sending : " + JSON.stringify(data));
     if (chatSocket.readyState === WebSocket.OPEN)
-        chatSocket.send(JSON.stringify(mouse));
+        chatSocket.send(JSON.stringify(data));
     else
         console.log("socket not open");
     draw();
@@ -98,16 +99,16 @@ chatSocket.onopen = function(e) {
     // console.log('open', e);
     //send data
     console.log("connected to websocket");
-    chatSocket.send(JSON.stringify(mouse));
+    chatSocket.send(JSON.stringify(data));
 }
 chatSocket.onmessage = function(e) {
     console.log("got message", e.data);
     let data = JSON.parse(e.data);
-    drawCircle(data.x, data.y, 10, color);
+    drawCircle(data.x, data.y, 10, data.color);
 };
 
 chatSocket.onclose = function(e) {
-    console.error('Chat socket closed unexpectedly');
+    console.error('Chat socket closed unexpectedly', e);
 }
 
 chatSocket.onerror = function(error) {
